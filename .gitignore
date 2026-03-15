@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.npy
+*.pkl
+scrape_resume.log
+report/313553058_project1.zip
+data/dummy/
