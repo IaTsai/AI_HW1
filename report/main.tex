@@ -34,27 +34,33 @@
 
 \title{\Large\textbf{Sentiment Classification of Taiwanese Restaurant Reviews\\from Google Maps}\\[6pt]
 \large AI Capstone Project \#1 --- NYCU Spring 2026}
-\author{Student ID: 313553058}
+\author{Ian Tsai \\ Student ID: 313553058}
 \date{}
 
 % ══════════════════════════════════════════════════════════
 \begin{document}
 \maketitle
 
-\textbf{GitHub Repository:} \url{https://github.com/PLACEHOLDER/ai-capstone-project1}
-\hfill \textit{(to be updated before submission)}
+\textbf{GitHub Repository:} \url{https://github.com/IaTsai/AI_HW1}
 
 % ══════════════════════════════════════════════════════════
 \section{Research Question and Motivation}
 
-Can we automatically classify the sentiment of Taiwanese restaurant reviews from Google Maps into positive, neutral, and negative categories using traditional ML and transfer learning approaches?
+Can we automatically classify the sentiment of Taiwanese restaurant reviews from Google Maps using both traditional ML and deep learning approaches?
 
 Online restaurant reviews heavily influence dining decisions in Taiwan.
 Google Maps is one of the most popular platforms, with reviews written predominantly in Traditional Chinese.
 However, star ratings alone can be misleading---a 3-star review in Taiwanese consumer culture often signals dissatisfaction rather than true neutrality.
-This project aims to (1)~construct a novel dataset of Taiwanese food reviews via web crawling, (2)~compare traditional NLP pipelines (TF-IDF + SVM/LR) with BERT-based transfer learning, and (3)~investigate how the ambiguous 3-star class affects classification performance.
+This project aims to (1)~construct a novel dataset of Taiwanese food reviews via web crawling, (2)~compare multiple supervised learning methods, and (3)~investigate how the ambiguous 3-star class affects classification performance.
 
-We also demonstrate a practical application: a tool that analyzes any restaurant's Google Maps reviews to produce sentiment trend reports, which could help restaurant owners identify service or quality issues over time.
+\textbf{Model architecture overview.}
+I experiment with three categories of supervised methods:
+\begin{enumerate}[nosep]
+  \item \textbf{Non-deep-learning:} TF-IDF features + Logistic Regression (LR) and SVM classifiers.
+  \item \textbf{Transfer learning (non-DL classifier):} I use a frozen pretrained XLM-RoBERTa-large~\citep{conneau2020xlmr} purely as a \textit{feature extractor}---producing 1{,}024-dimensional embeddings via mean pooling---then feed these into my trained LR/SVM classifiers. The BERT model is \textbf{not fine-tuned}; the trainable component is a classical ML classifier.
+  \item \textbf{Deep learning:} (a)~BERT zero-shot classification (no training on my data), and (b)~a PyTorch MLP (multi-layer perceptron) trained on the BERT embeddings, where the neural network itself is the learned classifier.
+\end{enumerate}
+I also demonstrate a practical application: a tool that analyzes any restaurant's Google Maps reviews to produce sentiment trend reports for restaurant owners.
 
 % ══════════════════════════════════════════════════════════
 \section{Dataset Documentation}
@@ -89,8 +95,7 @@ Mean star rating & 4.18 \\
 \end{tabular}
 \end{table}
 
-The dataset exhibits severe class imbalance: positive reviews dominate at 79.3\%, while neutral and negative classes each constitute roughly 10\%.
-This imbalance is inherent to online review platforms---most diners leave reviews only when satisfied.
+The dataset exhibits severe class imbalance: positive reviews dominate at 79.3\%, while neutral and negative each constitute $\sim$10\%.
 
 \begin{figure}[H]
 \centering
@@ -109,10 +114,9 @@ This imbalance is inherent to online review platforms---most diners leave review
 
 \subsection{Data Collection Process}
 
-We constructed 45 search queries spanning 10 cities (Taipei, New Taipei, Taichung, Tainan, Kaohsiung, Hsinchu, Chiayi, Keelung, Yilan, Hualien) and 8 night markets across Taiwan.
-For each query, the crawler: (1)~searches on Google Maps, (2)~iterates through restaurant results, (3)~clicks the reviews tab, (4)~scrolls to load all reviews, (5)~expands truncated text, and (6)~extracts structured data.
-
-Anti-blocking measures include: random delays (2--5s between actions), restaurant rotation every 5 entries, randomized query order, and a realistic user-agent string.
+I constructed 45 search queries spanning 10 cities and 8 night markets across Taiwan.
+The Playwright crawler searches Google Maps, iterates through restaurants, scrolls to load reviews, expands truncated text, and extracts structured data.
+Anti-blocking measures include random delays (2--5s), restaurant rotation, and randomized query order.
 
 \subsection{Data Cleaning}
 
@@ -139,40 +143,48 @@ Cleaning removed 38 reviews (99.4\% retention): empty/NaN text, reviews shorter 
 % ══════════════════════════════════════════════════════════
 \section{Methods}
 
-Our approach evolves through three stages, from a traditional NLP baseline to BERT-based transfer learning.
+My approach evolves through three stages, from a traditional NLP baseline to BERT-based transfer learning.
+I use two non-deep-learning classifiers (LR, SVM) and two deep-learning approaches (BERT zero-shot, MLP), satisfying the requirement of at least two methods with at most one deep-learning based.
 
 \subsection{Stage 1: TF-IDF + Classical ML}
 
 \textbf{Tokenization.}
 Chinese text requires word segmentation.
-We use jieba~\citep{jieba} in precise mode with a custom dictionary containing domain-specific terms (e.g., ``CP值'' [value for money], ``踩雷'' [bad experience], ``排隊'' [queuing]).
+I use jieba~\citep{jieba} in precise mode with a custom dictionary containing domain-specific terms (e.g., ``CP值'' [value for money], ``踩雷'' [bad experience], ``排隊'' [queuing]).
 Stopwords are filtered using a curated Chinese stopword list, and tokens with length $\leq 1$ are removed.
 
 \textbf{Feature extraction.}
-We apply TF-IDF vectorization (\texttt{max\_features}=5{,}000) followed by TruncatedSVD~\citep{halko2011svd} for dimensionality reduction to 150 dimensions, which retains 25.2\% of the total variance.
+I apply TF-IDF vectorization (\texttt{max\_features}=5{,}000) followed by TruncatedSVD~\citep{halko2011svd} for dimensionality reduction to 150 dimensions, which retains 25.2\% of the total variance.
 
 \textbf{Classifiers.}
-We train two models: (1)~Logistic Regression (LR) with L2 regularization (\texttt{max\_iter}=1000), and (2)~SVM with RBF kernel (\texttt{C}=1.0, $\gamma$=\texttt{scale}).
+I train two models: (1)~Logistic Regression (LR) with L2 regularization (\texttt{max\_iter}=1000), and (2)~SVM with RBF kernel (\texttt{C}=1.0, $\gamma$=\texttt{scale}).
 Both support sample weighting via $w_i = 1 + \log(1 + \text{likes}_i)$ to give more influence to highly-liked reviews.
 
 \subsection{Stage 2: BERT Embeddings + Classical ML}
 
-To capture deeper semantic features, we use XLM-RoBERTa-large~\citep{conneau2020xlmr} fine-tuned on XNLI~\citep{conneau2018xnli} (\texttt{joeddav/xlm-roberta-large-xnli}) as a \textit{feature extractor}.
-We perform mean pooling over the last hidden states to obtain 1{,}024-dimensional embeddings for each review.
-These embeddings replace TF-IDF+SVD features while keeping our trained LR/SVM classifiers---this constitutes \textbf{transfer learning}, where BERT provides the representation and our classifiers are the learned components.
+To capture deeper semantic features, I use XLM-RoBERTa-large~\citep{conneau2020xlmr} fine-tuned on XNLI~\citep{conneau2018xnli} (\texttt{joeddav/xlm-roberta-large-xnli}) as a \textit{feature extractor}.
+I perform mean pooling over the last hidden states to obtain 1{,}024-dimensional embeddings for each review.
+These embeddings replace TF-IDF+SVD features while keeping my trained LR/SVM classifiers---this constitutes \textbf{transfer learning}, where BERT provides the representation and my classifiers are the learned components.
 
-We also run BERT in a \textbf{zero-shot} configuration as a baseline, classifying reviews into ``positive,'' ``neutral,'' and ``negative'' without any training on our data.
+I also run BERT in a \textbf{zero-shot} configuration as a baseline, classifying reviews into ``positive,'' ``neutral,'' and ``negative'' without any training on my data.
+
+\subsection{Stage 2b: MLP Classifier (Deep Learning)}
+
+To provide a true deep-learning classifier, I train a PyTorch MLP on the same BERT embeddings.
+The architecture is: \texttt{Linear(1024,256)} $\to$ \texttt{BatchNorm} $\to$ \texttt{ReLU} $\to$ \texttt{Dropout(0.3)} $\to$ \texttt{Linear(256,64)} $\to$ \texttt{BatchNorm} $\to$ \texttt{ReLU} $\to$ \texttt{Dropout(0.2)} $\to$ \texttt{Linear(64,$n$)}.
+I use Adam optimizer ($lr$=1e-3, weight decay=1e-4) with cosine annealing, class-weighted cross-entropy loss, and train for 50 epochs (80 for the final model).
+Unlike BERT+LR where only a linear classifier is learned, the MLP \textbf{learns non-linear decision boundaries} in the embedding space, making it a genuine deep-learning method.
 
 \subsection{Stage 3: Binary Classification (3-Star as Negative)}
 
-Based on our experiment (Section~\ref{sec:neutral}), we reclassify 3-star reviews as negative, reducing the task to binary (satisfied vs.\ dissatisfied).
+Based on my experiment (Section~\ref{sec:neutral}), I reclassify 3-star reviews as negative, reducing the task to binary (satisfied vs.\ dissatisfied).
 This reflects a cultural insight: in Taiwan, giving 3 out of 5 stars typically signals dissatisfaction rather than neutrality.
 
 \subsection{Evaluation}
 
 All models are evaluated using \textbf{5-fold Stratified Cross-Validation}~\citep{scikit-learn}.
 Metrics include: Accuracy, Macro F1, Macro Precision, Macro Recall, and AUROC (One-vs-Rest).
-We use Macro F1 as the primary metric since it accounts for class imbalance.
+I use Macro F1 as the primary metric since it accounts for class imbalance.
 
 % ══════════════════════════════════════════════════════════
 \section{Experiments and Results}
@@ -189,16 +201,20 @@ We use Macro F1 as the primary metric since it accounts for class imbalance.
 \midrule
 TF-IDF + LR      & 0.818 & 0.449 & 0.703 & 0.415 \\
 TF-IDF + SVM     & 0.822 & 0.457 & 0.509 & 0.448 \\
-BERT zero-shot   & 0.815 & 0.559 & ---   & ---   \\
+BERT zero-shot\textsuperscript{\dag}   & 0.815 & 0.559 & ---   & ---   \\
 BERT + SVM       & 0.798 & 0.328 & 0.599 & 0.350 \\
+BERT + MLP\textsuperscript{\dag}  & 0.779 & 0.619 & 0.598 & 0.664 \\
 \textbf{BERT + LR} & \textbf{0.842} & \textbf{0.636} & \textbf{0.652} & \textbf{0.625} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+{\footnotesize \textsuperscript{\dag}Deep-learning methods.}
+
 All models achieve $\sim$82\% accuracy, largely because predicting ``positive'' for everything already yields 79.3\%.
-The key differentiator is Macro F1: \textbf{BERT+LR outperforms all others at 0.636}, surpassing even the zero-shot baseline (0.559).
-Notably, BERT+SVM performs worst (F1=0.328)---the RBF kernel struggles in the 1{,}024-dimensional BERT space.
+The key differentiator is Macro F1: \textbf{BERT+LR outperforms all others at 0.636}, surpassing the zero-shot baseline (0.559) and the deep-learning MLP (0.619).
+The MLP's non-linear layers do not outperform LR---the BERT embedding space is already well-structured for linear separation.
+BERT+SVM performs worst (F1=0.328)---the RBF kernel struggles in the 1{,}024-dimensional BERT space.
 
 \begin{figure}[H]
 \centering
@@ -217,7 +233,7 @@ Notably, BERT+SVM performs worst (F1=0.328)---the RBF kernel struggles in the 1{
 
 \subsection{Experiment 1: Learning Curve}
 
-We train LR with 10\%, 25\%, 50\%, 75\%, and 100\% of the data to study how performance scales.
+I train LR with 10\%, 25\%, 50\%, 75\%, and 100\% of the data to study how performance scales.
 
 \begin{table}[H]
 \centering
@@ -241,7 +257,7 @@ The curve has not plateaued at 100\%, indicating that collecting more data would
 
 \subsection{Experiment 2: Class Balance}
 
-We compare three strategies to address the 79:10:10 class imbalance.
+I compare three strategies to address the 79:10:10 class imbalance.
 
 \begin{table}[H]
 \centering
@@ -259,8 +275,7 @@ SMOTE~\citep{chawla2002smote} & 0.656 & 0.506 & 0.495 & 0.577 \\
 \end{table}
 
 Using \texttt{class\_weight='balanced'} sacrifices 16 points of accuracy but gains 19.5\% in F1 Macro.
-SMOTE produces similar results.
-The accuracy drop is expected: the model now correctly classifies more minority samples at the cost of some majority-class errors.
+SMOTE produces similar results. The accuracy drop reflects improved minority-class recall at the cost of some majority-class errors.
 
 \subsection{Experiment 3: Dimensionality Reduction (TruncatedSVD)}
 
@@ -296,7 +311,7 @@ The 150-d SVD offers a practical trade-off: 97\% of raw TF-IDF performance at 3\
 \label{sec:neutral}
 
 The 3-star class is inherently ambiguous.
-We test four scenarios to understand its impact.
+I test four scenarios to understand its impact.
 
 \begin{table}[H]
 \centering
@@ -319,12 +334,12 @@ This aligns with a cultural observation: in Taiwan, a 3-star rating on a 5-point
 
 \subsection{Experiment 5: Data Augmentation}
 
-We apply noise injection (random character deletion/substitution) to augment minority classes.
+I apply noise injection (random character deletion/substitution) to augment minority classes.
 Results show minimal improvement ($<$1\% F1), consistent with the expectation that character-level noise does not generate semantically meaningful new samples for TF-IDF models.
 
 \subsection{Experiment 6: Feature Representation Comparison}
 
-Combining the best strategies (BERT embeddings + binary classification), we achieve the overall best model.
+Combining the best strategies (BERT embeddings + binary classification), I achieve the overall best model.
 
 \begin{table}[H]
 \centering
@@ -335,19 +350,23 @@ Combining the best strategies (BERT embeddings + binary classification), we achi
 \textbf{Model} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{Precision} & \textbf{Recall} \\
 \midrule
 TF-IDF + LR (binary) & 0.829 & 0.625 & --- & --- \\
+BERT + MLP (binary)\textsuperscript{\dag} & 0.849 & 0.787 & 0.771 & 0.812 \\
 \textbf{BERT + LR (binary)} & \textbf{0.892} & \textbf{0.826} & \textbf{0.846} & \textbf{0.811} \\
 BERT + LR (binary, balanced) & 0.849 & 0.792 & 0.771 & 0.826 \\
 \bottomrule
 \end{tabular}
+
+{\footnotesize \textsuperscript{\dag}Deep-learning method.}
 \end{table}
 
 The final \textbf{BERT+LR binary model achieves F1=0.826}, an 85\% improvement over the TF-IDF baseline.
+The MLP (F1=0.787) outperforms TF-IDF methods but falls short of LR, again confirming that linear classifiers are optimal for BERT embeddings.
 The progression tells a clear story: better features (BERT) and better label design (binary) are both essential.
 
 % ══════════════════════════════════════════════════════════
 \section{Application: Restaurant Analysis Tool (My Friend's Restaurant)}
 
-To demonstrate practical value, we built a tool (\texttt{analyze\_restaurant.py}) that, given a Google Maps URL, automatically: (1)~scrapes all reviews via multi-pass crawling with deduplication, (2)~predicts sentiment using the best model (BERT+LR binary), and (3)~generates monthly trend reports.
+To demonstrate practical value, I built a tool (\texttt{analyze\_restaurant.py}) that, given a Google Maps URL, automatically: (1)~scrapes all reviews via multi-pass crawling with deduplication, (2)~predicts sentiment using the best model (BERT+LR binary), and (3)~generates monthly trend reports.
 
 \begin{figure}[H]
 \centering
@@ -364,19 +383,18 @@ To demonstrate practical value, we built a tool (\texttt{analyze\_restaurant.py}
 \label{fig:app}
 \end{figure}
 
-The tool identified a satisfaction dip to 35.3\% in August 2025, which recovered after two months.
-Negative review analysis revealed recurring complaints about specific employees and hygiene issues---actionable insights for the restaurant owner.
+The tool identified a satisfaction dip to 35.3\% in August 2025 (recovered after two months) and recurring complaints about hygiene and specific employees---actionable insights for the owner.
 
 % ══════════════════════════════════════════════════════════
 \section{Discussion}
 
-\textbf{Are the results what we expected?}
+\textbf{Are the results what I expected?}
 Yes and no.
-We expected BERT embeddings to outperform TF-IDF (confirmed: +42\% F1), but the magnitude of BERT+SVM's failure (worst overall) was surprising.
+I expected BERT embeddings to outperform TF-IDF (confirmed: +42\% F1), but the magnitude of BERT+SVM's failure (worst overall) was surprising.
 The RBF kernel's reliance on Euclidean distance does not suit the high-dimensional, semantically structured BERT space.
-Linear models (LR) are a better match.
+Interestingly, the deep-learning MLP (F1=0.619) also falls short of the simpler LR (F1=0.636), suggesting that BERT embeddings are already linearly separable and additional non-linear layers add noise rather than signal.
 
-We also expected 3-class classification to be harder than binary, but the specific finding that ``3-star as negative'' outperforms ``remove neutral'' was a genuinely useful cultural insight.
+I also expected 3-class classification to be harder than binary, but the specific finding that ``3-star as negative'' outperforms ``remove neutral'' was a genuinely useful cultural insight.
 
 \textbf{Factors affecting results.}
 \begin{enumerate}[nosep]
@@ -393,17 +411,22 @@ We also expected 3-class classification to be harder than binary, but the specif
     Words like ``還好'' (literally ``still okay'') signal negativity in the review context, which TF-IDF cannot capture but BERT can.
 \end{enumerate}
 
-\textbf{What would we do with more time?}
+\textbf{What would I do with more time?}
 \begin{enumerate}[nosep]
-  \item Fine-tune BERT on our dataset (currently only used as a frozen feature extractor) to potentially push F1 beyond 0.9.
+  \item Fine-tune BERT on my dataset (currently only used as a frozen feature extractor) to potentially push F1 beyond 0.9.
   \item Implement aspect-based sentiment analysis to separately classify food quality, service, hygiene, and value.
   \item Expand the dataset to 20{,}000+ reviews across more restaurant categories.
   \item Add a temporal component: track how sentiment evolves as restaurants mature.
 \end{enumerate}
 
-\textbf{What we learned.}
+\textbf{What I learned.}
 The most impactful improvements came not from algorithmic tuning but from \textit{understanding the data}: recognizing that 3-star means dissatisfaction in Taiwan, and that BERT embeddings capture cultural nuances that bag-of-words models cannot.
 This reinforces the course's emphasis that good models start with good data understanding.
+
+\textbf{Remaining questions.}
+Why does BERT+SVM perform worst despite using the same rich embeddings as BERT+LR? I hypothesize the RBF kernel's Euclidean distance metric is ill-suited for the high-dimensional, semantically clustered BERT space, but a rigorous theoretical analysis is needed.
+Additionally, does the ``3-star = negative'' cultural pattern generalize to other East Asian review platforms (e.g., Tabelog in Japan, Dianping in China), or is it specific to Taiwanese Google Maps users?
+Finally, would fine-tuning BERT on this domain-specific corpus close the gap between MLP and LR, or would the linear separability of the embedding space persist?
 
 % ══════════════════════════════════════════════════════════
 \bibliographystyle{plainnat}
@@ -433,7 +456,10 @@ This reinforces the course's emphasis that good models start with good data unde
 \subsection*{A.6 BERT+LR Training (\texttt{train\_bert\_svm.py})}
 \inputminted{python}{code/train_bert_svm.py}
 
-\subsection*{A.7 Restaurant Analyzer (\texttt{analyze\_restaurant.py}) --- excerpt}
+\subsection*{A.7 MLP Classifier (\texttt{train\_mlp.py}) --- excerpt}
+\inputminted[firstline=1,lastline=100]{python}{code/train_mlp.py}
+
+\subsection*{A.8 Restaurant Analyzer (\texttt{analyze\_restaurant.py}) --- excerpt}
 \inputminted[firstline=1,lastline=100]{python}{code/analyze_restaurant.py}
 
 \end{document}

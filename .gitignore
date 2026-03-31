@@ -2,7 +2,9 @@ __pycache__/
 *.pyc
 *.npy
 *.pkl
+*.pt
 scrape_resume.log
 report/313553058_project1.zip
 data/dummy/
 0315current.md
+0323current.md
