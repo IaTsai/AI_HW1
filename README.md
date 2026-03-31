@@ -57,6 +57,10 @@ A practical tool that analyzes any Google Maps restaurant's reviews and generate
 
 ## Dataset
 
+> **Full documentation:** [`DATASET.md`](DATASET.md)
+> **Raw data:** [`data/raw/reviews.csv`](data/raw/reviews.csv) (6,547 reviews)
+> **Cleaned data:** [`data/processed/reviews_clean.csv`](data/processed/reviews_clean.csv) (6,509 reviews)
+
 | Attribute | Value |
 |-----------|-------|
 | Source | Google Maps (Playwright crawler) |
@@ -82,6 +86,7 @@ A practical tool that analyzes any Google Maps restaurant's reviews and generate
 
 ```
 AI_HW1/
+├── DATASET.md               # Dataset documentation
 ├── data/
 │   ├── raw/reviews.csv              # 6,547 raw reviews
 │   └── processed/reviews_clean.csv  # 6,509 cleaned reviews
@@ -89,6 +94,7 @@ AI_HW1/
 │   ├── collect.py           # Google Maps scraper (Playwright)
 │   ├── preprocess.py        # jieba + TF-IDF + TruncatedSVD
 │   ├── train.py             # LR + SVM + 5-fold CV
+│   ├── train_mlp.py         # PyTorch MLP classifier
 │   ├── evaluate.py          # Metrics + save_all_plots()
 │   ├── experiments.py       # 5 ablation experiments
 │   ├── bert_baseline.py     # BERT zero-shot (GPU)
@@ -97,7 +103,7 @@ AI_HW1/
 │   ├── analyze_restaurant.py # Restaurant analysis tool
 │   └── clean.py             # Data cleaning
 ├── results/
-│   ├── figures/             # 22+ plots
+│   ├── figures/             # 25+ plots
 │   ├── tables/              # 10 LaTeX tables
 │   └── analysis/            # Restaurant analysis outputs
 ├── report/                  # LaTeX report for Overleaf
